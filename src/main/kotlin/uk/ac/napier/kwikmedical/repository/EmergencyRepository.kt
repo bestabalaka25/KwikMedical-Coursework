@@ -98,6 +98,81 @@ class EmergencyRepository {
         return emergencies
     }
 
+    fun completeAndReleaseAmbulance(emergencyId: String): Boolean {
+        DatabaseFactory.getConnection().use { connection ->
+            connection.autoCommit = false
+
+            try {
+                val ambulanceId = connection.prepareStatement(
+                    """
+                SELECT allocated_ambulance_id
+                FROM emergencies
+                WHERE emergency_id = ?
+                AND status = 'ARRIVED'
+                FOR UPDATE
+                """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, emergencyId)
+
+                    statement.executeQuery().use { results ->
+                        if (results.next()) {
+                            results.getString("allocated_ambulance_id")
+                        } else {
+                            null
+                        }
+                    }
+                }
+
+                if (ambulanceId == null) {
+                    connection.rollback()
+                    return false
+                }
+
+                val releasedRows = connection.prepareStatement(
+                    """
+                UPDATE ambulances
+                SET available = TRUE
+                WHERE ambulance_id = ?
+                AND available = FALSE
+                """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, ambulanceId)
+                    statement.executeUpdate()
+                }
+
+                if (releasedRows != 1) {
+                    connection.rollback()
+                    return false
+                }
+
+                val updatedRows = connection.prepareStatement(
+                    """
+                UPDATE emergencies
+                SET status = 'COMPLETED'
+                WHERE emergency_id = ?
+                AND status = 'ARRIVED'
+                """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, emergencyId)
+                    statement.executeUpdate()
+                }
+
+                if (updatedRows != 1) {
+                    connection.rollback()
+                    return false
+                }
+
+                connection.commit()
+                return true
+
+            } catch (exception: Exception) {
+                connection.rollback()
+                throw exception
+            }
+        }
+    }
+
+
 
     fun updateStatus(emergencyId: String, status: String): Boolean {
         DatabaseFactory.getConnection().use { connection ->

@@ -1,17 +1,26 @@
 
 package uk.ac.napier.kwikmedical.service
 
+import uk.ac.napier.kwikmedical.ambulance.Ambulance
 import uk.ac.napier.kwikmedical.hospital.Hospital
 import uk.ac.napier.kwikmedical.hospital.HospitalData
-import uk.ac.napier.kwikmedical.repository.AmbulanceRepository
 
 class HospitalAllocationService {
 
-    private val ambulanceRepository = AmbulanceRepository()
+    private val ambulanceAllocationService =
+        AmbulanceAllocationService()
 
-    fun selectHospital(): Hospital? {
-        return HospitalData.hospitals.firstOrNull { hospital ->
-            ambulanceRepository.hasAvailableForHospital(hospital.hospitalId)
+    fun allocateHospital(): Pair<Hospital, Ambulance>? {
+
+        for (hospital in HospitalData.hospitals) {
+
+            val ambulance = ambulanceAllocationService.selectAmbulance(
+                hospital.hospitalId
+            ) ?: continue
+
+            return Pair(hospital, ambulance)
         }
+
+        return null
     }
 }
