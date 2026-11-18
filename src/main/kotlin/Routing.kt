@@ -13,6 +13,8 @@ import uk.ac.napier.kwikmedical.service.EmergencyService
 import uk.ac.napier.kwikmedical.repository.EmergencyRepository
 import uk.ac.napier.kwikmedical.emergency.Emergency
 import uk.ac.napier.kwikmedical.service.DispatchService
+import uk.ac.napier.kwikmedical.hospital.HospitalCalloutRequest
+import uk.ac.napier.kwikmedical.service.HospitalCalloutService
 @Serializable
 data class Patient(
     val nhsNumber: String,
@@ -31,6 +33,7 @@ fun Application.configureRouting() {
     val emergencyService = EmergencyService()
     val emergencyRepository = EmergencyRepository()
     val dispatchService = DispatchService()
+    val hospitalCalloutService = HospitalCalloutService()
 
     routing {
 
@@ -103,6 +106,41 @@ fun Application.configureRouting() {
 
             call.respond(emergencies)
         }
+
+        put("/hospitals/{hospitalId}/emergencies/{emergencyId}/status") {
+
+            val hospitalId = call.parameters["hospitalId"]
+            val emergencyId = call.parameters["emergencyId"]
+
+            if (hospitalId == null || emergencyId == null) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Hospital ID and emergency ID are required")
+                )
+                return@put
+            }
+
+            val request = call.receive<HospitalCalloutRequest>()
+
+            val updated = hospitalCalloutService.updateCalloutStatus(
+                hospitalId = hospitalId,
+                emergencyId = emergencyId,
+                newStatus = request.status
+            )
+
+            if (updated) {
+                call.respond(
+                    HttpStatusCode.OK,
+                    mapOf("message" to "Hospital call-out status updated successfully")
+                )
+            } else {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Invalid status transition, hospital assignment or emergency ID")
+                )
+            }
+        }
+
 
 
 
