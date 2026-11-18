@@ -46,9 +46,14 @@ class EmergencyService {
         return try {
             emergencyRepository.save(emergency)
         } catch (exception: Exception) {
-            ambulanceAllocationService.releaseAmbulance(
-                ambulance.ambulanceId
-            )
+            try {
+                ambulanceAllocationService.releaseAmbulance(
+                    ambulance.ambulanceId
+                )
+            } catch (releaseException: Exception) {
+                exception.addSuppressed(releaseException)
+            }
+
             throw exception
         }
 

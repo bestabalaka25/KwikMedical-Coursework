@@ -174,22 +174,25 @@ class EmergencyRepository {
 
 
 
-    fun updateStatus(emergencyId: String, status: String): Boolean {
+    fun updateStatus(emergencyId: String, expectedStatus: String, newStatus: String): Boolean {
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
                 """
             UPDATE emergencies
             SET status = ?
             WHERE emergency_id = ?
+            AND status = ?
             """.trimIndent()
             ).use { statement ->
-                statement.setString(1, status)
+                statement.setString(1, newStatus)
                 statement.setString(2, emergencyId)
+                statement.setString(3, expectedStatus)
 
                 return statement.executeUpdate() == 1
             }
         }
     }
+
 
 
     private fun mapEmergency(

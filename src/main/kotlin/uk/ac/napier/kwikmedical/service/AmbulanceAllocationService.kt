@@ -11,7 +11,7 @@ class AmbulanceAllocationService {
     fun selectAmbulance(hospitalId: String): Ambulance? {
         return ambulanceRepository.reserveAvailableForHospital(hospitalId)
     }
-    fun releaseAmbulance(ambulanceId: String) {
-        ambulanceRepository.release(ambulanceId)
+    fun releaseAmbulance(ambulanceId: String): Boolean {
+        return ambulanceRepository.release(ambulanceId)
     }
 }

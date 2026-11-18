@@ -89,18 +89,21 @@ class AmbulanceRepository {
         }
     }
 
-    fun release(ambulanceId: String) {
+
+    fun release(ambulanceId: String): Boolean {
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
                 """
-                UPDATE ambulances
-                SET available = TRUE
-                WHERE ambulance_id = ?
-                """.trimIndent()
+            UPDATE ambulances
+            SET available = TRUE
+            WHERE ambulance_id = ?
+            AND available = FALSE
+            """.trimIndent()
             ).use { statement ->
                 statement.setString(1, ambulanceId)
-                statement.executeUpdate()
+                return statement.executeUpdate() == 1
             }
         }
     }
+
 }

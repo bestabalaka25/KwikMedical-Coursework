@@ -9,6 +9,7 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import kotlinx.serialization.SerializationException
 import uk.ac.napier.kwikmedical.database.DatabaseFactory
+import io.ktor.server.plugins.BadRequestException
 
 fun Application.rootModule() {
 
@@ -22,6 +23,12 @@ fun Application.rootModule() {
             call.respond(
                 HttpStatusCode.BadRequest,
                 mapOf("error" to "Invalid JSON request format")
+            )
+        }
+        exception<BadRequestException> { call, cause ->
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf("error" to "Invalid request body")
             )
         }
 

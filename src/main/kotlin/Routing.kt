@@ -145,7 +145,7 @@ fun Application.configureRouting() {
             val updated = hospitalCalloutService.updateCalloutStatus(
                 hospitalId = hospitalId,
                 emergencyId = emergencyId,
-                newStatus = request.status
+                newStatus = request.status.trim().uppercase()
             )
 
             if (updated) {
@@ -155,7 +155,7 @@ fun Application.configureRouting() {
                 )
             } else {
                 call.respond(
-                    HttpStatusCode.BadRequest,
+                    HttpStatusCode.Conflict,
                     mapOf("error" to "Invalid status transition, hospital assignment or emergency ID")
                 )
             }
@@ -187,31 +187,7 @@ fun Application.configureRouting() {
             }
         }
 
-        put("/emergencies/{emergencyId}/complete") {
-            val emergencyId = call.parameters["emergencyId"]
 
-            if (emergencyId == null) {
-                call.respond(
-                    HttpStatusCode.BadRequest,
-                    mapOf("error" to "Emergency ID is required")
-                )
-                return@put
-            }
-
-            val completed = emergencyService.completeEmergency(emergencyId)
-
-            if (completed) {
-                call.respond(
-                    HttpStatusCode.OK,
-                    mapOf("message" to "Emergency completed and ambulance released")
-                )
-            } else {
-                call.respond(
-                    HttpStatusCode.NotFound,
-                    mapOf("error" to "Emergency not found or already completed")
-                )
-            }
-        }
 
         get("/dispatch/{emergencyId}") {
             val emergencyId = call.parameters["emergencyId"]

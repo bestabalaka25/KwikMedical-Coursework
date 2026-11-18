@@ -40,6 +40,7 @@ class HospitalCalloutService {
 
         return emergencyRepository.updateStatus(
             emergencyId,
+            emergency.status,
             newStatus
         )
     }
