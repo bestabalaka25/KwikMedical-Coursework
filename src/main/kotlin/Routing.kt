@@ -134,6 +134,13 @@ fun Application.configureRouting() {
             }
 
             val request = call.receive<HospitalCalloutRequest>()
+            if (request.status.isBlank()) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Call-out status is required")
+                )
+                return@put
+            }
 
             val updated = hospitalCalloutService.updateCalloutStatus(
                 hospitalId = hospitalId,

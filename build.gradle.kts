@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.logback.classic)
     implementation(ktorLibs.server.contentNegotiation)
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.6.0")
+    implementation("io.ktor:ktor-server-status-pages-jvm:3.6.0")
     implementation("com.h2database:h2:2.4.240")
 
     testImplementation(kotlin("test"))
