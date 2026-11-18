@@ -71,10 +71,22 @@ fun Application.configureRouting() {
         post("/emergencies") {
             val request = call.receive<EmergencyRequest>()
 
+            if (
+                request.patientNhsNumber.isBlank() ||
+                request.incidentAddress.isBlank() ||
+                request.description.isBlank()
+            ) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Patient number, incident address and description are required")
+                )
+                return@post
+            }
+
             val emergency = emergencyService.createEmergency(
-                patientNhsNumber = request.patientNhsNumber,
-                incidentAddress = request.incidentAddress,
-                description = request.description
+                patientNhsNumber = request.patientNhsNumber.trim(),
+                incidentAddress = request.incidentAddress.trim(),
+                description = request.description.trim()
             )
 
             if (emergency != null) {
@@ -86,6 +98,7 @@ fun Application.configureRouting() {
                 )
             }
         }
+
 
         get("/emergencies") {
             call.respond(emergencyRepository.findAll())
