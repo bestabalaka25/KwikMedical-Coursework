@@ -16,6 +16,11 @@ import kotlinx.serialization.decodeFromString
 import io.ktor.client.request.put
 import uk.ac.napier.kwikmedical.repository.AmbulanceRepository
 import uk.ac.napier.kwikmedical.service.AmbulanceAllocationService
+import kotlinx.coroutines.runBlocking
+import uk.ac.napier.kwikmedical.ambulance.AmbulanceSmartphoneClient
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
 
 private fun configureTestDatabase() {
     System.setProperty(
@@ -766,6 +771,391 @@ class ServerTest {
 
         assertEquals(HttpStatusCode.Forbidden, unauthorizedResponse.status)
     }
+
+    @Test
+    fun `test reject callout record with invalid date time`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "patientNhsNumber": "NHS001",
+                "incidentAddress": "15 Example Street, Edinburgh",
+                "description": "Urgent medical assistance required"
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Submit a call-out record with an invalid date-time
+        val response = client.post(
+            "/hospitals/$hospitalId/emergencies/$emergencyId/callout"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "crewMembers": "Paramedic A, Paramedic B",
+                "incidentDateTime": "not-a-valid-date",
+                "incidentLocation": "15 Example Street, Edinburgh",
+                "actionsTaken": "Initial assessment and treatment provided",
+                "outcome": "Patient stabilised and transported to hospital",
+                "durationMinutes": 45
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test reject callout record with negative duration`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "patientNhsNumber": "NHS001",
+                "incidentAddress": "15 Example Street, Edinburgh",
+                "description": "Urgent medical assistance required"
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Submit a call-out record with a negative duration
+        val response = client.post(
+            "/hospitals/$hospitalId/emergencies/$emergencyId/callout"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "crewMembers": "Paramedic A, Paramedic B",
+                "incidentDateTime": "2026-11-20T10:30:00",
+                "incidentLocation": "15 Example Street, Edinburgh",
+                "actionsTaken": "Initial assessment and treatment provided",
+                "outcome": "Patient stabilised and transported to hospital",
+                "durationMinutes": -10
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test reject callout record with missing crew members`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "patientNhsNumber": "NHS001",
+                "incidentAddress": "15 Example Street, Edinburgh",
+                "description": "Urgent medical assistance required"
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Submit a record without crew members
+        val response = client.post(
+            "/hospitals/$hospitalId/emergencies/$emergencyId/callout"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "crewMembers": "",
+                "incidentDateTime": "2026-11-20T10:30:00",
+                "incidentLocation": "15 Example Street, Edinburgh",
+                "actionsTaken": "Initial assessment and treatment provided",
+                "outcome": "Patient stabilised and transported to hospital",
+                "durationMinutes": 45
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test reject callout record with missing incident location`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "patientNhsNumber": "NHS001",
+                "incidentAddress": "15 Example Street, Edinburgh",
+                "description": "Urgent medical assistance required"
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Submit a record without an incident location
+        val response = client.post(
+            "/hospitals/$hospitalId/emergencies/$emergencyId/callout"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "crewMembers": "Paramedic A, Paramedic B",
+                "incidentDateTime": "2026-11-20T10:30:00",
+                "incidentLocation": "",
+                "actionsTaken": "Initial assessment and treatment provided",
+                "outcome": "Patient stabilised and transported to hospital",
+                "durationMinutes": 45
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test ambulance smartphone receives dispatch information`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "patientNhsNumber": "NHS001",
+                "incidentAddress": "15 Example Street, Edinburgh",
+                "description": "Urgent medical assistance required"
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        // Create an HTTP client connected to the in-memory test server
+        val smartphoneHttpClient = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        val smartphoneClient = AmbulanceSmartphoneClient(
+            baseUrl = "",
+            client = smartphoneHttpClient
+        )
+
+        try {
+            val dispatch = smartphoneClient.receiveDispatch(emergency.emergencyId)
+
+            assertEquals(emergency.emergencyId, dispatch.emergency.emergencyId)
+            assertEquals("NHS001", dispatch.patient.nhsNumber)
+            assertEquals("Alex Morgan", dispatch.patient.name)
+            assertEquals("Asthma", dispatch.patient.medicalCondition)
+        } finally {
+            smartphoneClient.close()
+        }
+    }
+
+    @Test
+    fun `test ambulance smartphone submits and retrieves callout record`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+            {
+                "patientNhsNumber": "NHS001",
+                "incidentAddress": "15 Example Street, Edinburgh",
+                "description": "Urgent medical assistance required"
+            }
+            """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Create the smartphone HTTP client
+        val smartphoneHttpClient = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        val smartphoneClient = AmbulanceSmartphoneClient(
+            baseUrl = "",
+            client = smartphoneHttpClient
+        )
+
+        try {
+            // Submit the call-out record using the smartphone client
+            val request = CalloutRecordRequest(
+                crewMembers = "Paramedic A, Paramedic B",
+                incidentDateTime = "2026-11-20T10:30:00",
+                incidentLocation = "15 Example Street, Edinburgh",
+                actionsTaken = "Initial assessment and treatment provided",
+                outcome = "Patient stabilised and transported to hospital",
+                durationMinutes = 45
+            )
+
+            val submittedRecord = smartphoneClient.submitCallout(
+                hospitalId,
+                emergencyId,
+                request
+            )
+
+            assertEquals(emergencyId, submittedRecord.emergencyId)
+            assertEquals("Paramedic A, Paramedic B", submittedRecord.crewMembers)
+
+            // Retrieve the saved record using the smartphone client
+            val retrievedRecord = smartphoneClient.retrieveCallout(
+                hospitalId,
+                emergencyId
+            )
+
+            assertEquals(submittedRecord.calloutId, retrievedRecord.calloutId)
+            assertEquals(emergencyId, retrievedRecord.emergencyId)
+            assertEquals("Initial assessment and treatment provided", retrievedRecord.actionsTaken)
+            assertEquals(45, retrievedRecord.durationMinutes)
+
+        } finally {
+            smartphoneClient.close()
+        }
+    }
+
 
 
 }

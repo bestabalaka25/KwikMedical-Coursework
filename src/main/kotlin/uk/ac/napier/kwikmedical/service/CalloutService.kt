@@ -6,6 +6,7 @@ import java.util.UUID
 import java.time.LocalDateTime
 import java.time.format.DateTimeParseException
 
+
 class CalloutService {
 
     private val calloutRepository = CalloutRepository()
@@ -17,6 +18,7 @@ class CalloutService {
             false
         }
     }
+
 
     fun recordCallout(
         emergencyId: String,
