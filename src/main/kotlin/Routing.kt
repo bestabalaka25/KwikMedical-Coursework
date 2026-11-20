@@ -15,6 +15,8 @@ import uk.ac.napier.kwikmedical.emergency.Emergency
 import uk.ac.napier.kwikmedical.service.DispatchService
 import uk.ac.napier.kwikmedical.hospital.HospitalCalloutRequest
 import uk.ac.napier.kwikmedical.service.HospitalCalloutService
+
+
 @Serializable
 data class Patient(
     val nhsNumber: String,
@@ -34,6 +36,7 @@ fun Application.configureRouting() {
     val emergencyRepository = EmergencyRepository()
     val dispatchService = DispatchService()
     val hospitalCalloutService = HospitalCalloutService()
+
 
     routing {
 
@@ -67,6 +70,7 @@ fun Application.configureRouting() {
                 )
             }
         }
+
 
         post("/emergencies") {
             val request = call.receive<EmergencyRequest>()
@@ -132,6 +136,7 @@ fun Application.configureRouting() {
                 )
                 return@put
             }
+
 
             val request = call.receive<HospitalCalloutRequest>()
             if (request.status.isBlank()) {

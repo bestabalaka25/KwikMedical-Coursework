@@ -88,6 +88,35 @@ class AmbulanceRepository {
             }
         }
     }
+    fun findAll(): List<Ambulance> {
+        DatabaseFactory.getConnection().use { connection ->
+            connection.prepareStatement(
+                """
+            SELECT ambulance_id, hospital_id, vehicle_call_sign, available
+            FROM ambulances
+            ORDER BY ambulance_id
+            """.trimIndent()
+            ).use { statement ->
+
+                statement.executeQuery().use { results ->
+                    val ambulances = mutableListOf<Ambulance>()
+
+                    while (results.next()) {
+                        ambulances.add(
+                            Ambulance(
+                                ambulanceId = results.getString("ambulance_id"),
+                                hospitalId = results.getString("hospital_id"),
+                                vehicleCallSign = results.getString("vehicle_call_sign"),
+                                available = results.getBoolean("available")
+                            )
+                        )
+                    }
+
+                    return ambulances
+                }
+            }
+        }
+    }
 
 
     fun release(ambulanceId: String): Boolean {
