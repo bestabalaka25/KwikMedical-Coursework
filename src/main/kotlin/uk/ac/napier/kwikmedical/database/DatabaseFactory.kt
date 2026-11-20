@@ -7,11 +7,12 @@ import java.sql.DriverManager
 
 object DatabaseFactory {
 
-    private const val DATABASE_URL =
-        "jdbc:h2:file:./data/kwikmedical"
+    private fun databaseUrl() =
+        System.getProperty("kwikmedical.database.url")
+            ?: "jdbc:h2:file:./data/kwikmedical"
 
     fun getConnection() =
-        DriverManager.getConnection(DATABASE_URL, "sa", "")
+        DriverManager.getConnection(databaseUrl(), "sa", "")
 
     fun initialize() {
         Files.createDirectories(Path.of("data"))
@@ -72,6 +73,25 @@ object DatabaseFactory {
                         available BOOLEAN NOT NULL DEFAULT TRUE
                     )
                     """.trimIndent()
+                )
+            }
+            // Create call-out records table
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """
+        CREATE TABLE IF NOT EXISTS callout_records (
+            callout_id VARCHAR(36) PRIMARY KEY,
+            emergency_id VARCHAR(36) NOT NULL UNIQUE,
+            crew_members VARCHAR(500) NOT NULL,
+            incident_date_time VARCHAR(50) NOT NULL,
+            incident_location VARCHAR(255) NOT NULL,
+            actions_taken VARCHAR(2000) NOT NULL,
+            outcome VARCHAR(1000) NOT NULL,
+            duration_minutes INT NOT NULL CHECK (duration_minutes >= 0),
+            FOREIGN KEY (emergency_id)
+                REFERENCES emergencies(emergency_id)
+        )
+        """.trimIndent()
                 )
             }
 

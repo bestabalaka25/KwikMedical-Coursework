@@ -15,6 +15,8 @@ import uk.ac.napier.kwikmedical.emergency.Emergency
 import uk.ac.napier.kwikmedical.service.DispatchService
 import uk.ac.napier.kwikmedical.hospital.HospitalCalloutRequest
 import uk.ac.napier.kwikmedical.service.HospitalCalloutService
+import uk.ac.napier.kwikmedical.service.CalloutService
+import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
 
 
 @Serializable
@@ -36,6 +38,7 @@ fun Application.configureRouting() {
     val emergencyRepository = EmergencyRepository()
     val dispatchService = DispatchService()
     val hospitalCalloutService = HospitalCalloutService()
+    val calloutService = CalloutService()
 
 
     routing {
@@ -165,6 +168,120 @@ fun Application.configureRouting() {
                 )
             }
         }
+
+        post("/hospitals/{hospitalId}/emergencies/{emergencyId}/callout") {
+
+            val hospitalId = call.parameters["hospitalId"]
+            val emergencyId = call.parameters["emergencyId"]
+
+            if (hospitalId == null || emergencyId == null) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Hospital ID and emergency ID are required")
+                )
+                return@post
+            }
+
+            val emergency = emergencyRepository.findById(emergencyId)
+
+            if (emergency == null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    mapOf("error" to "Emergency not found")
+                )
+                return@post
+            }
+
+            if (emergency.allocatedHospitalId != hospitalId) {
+                call.respond(
+                    HttpStatusCode.Forbidden,
+                    mapOf("error" to "This hospital is not assigned to the emergency")
+                )
+                return@post
+            }
+
+            if (emergency.status != "COMPLETED") {
+                call.respond(
+                    HttpStatusCode.Conflict,
+                    mapOf("error" to "Emergency must be completed before submitting the call-out record")
+                )
+                return@post
+            }
+
+            if (calloutService.getCallout(emergencyId) != null) {
+                call.respond(
+                    HttpStatusCode.Conflict,
+                    mapOf("error" to "A call-out record already exists for this emergency")
+                )
+                return@post
+            }
+
+            val request = call.receive<CalloutRecordRequest>()
+
+            val record = calloutService.recordCallout(
+                emergencyId = emergencyId,
+                crewMembers = request.crewMembers,
+                incidentDateTime = request.incidentDateTime,
+                incidentLocation = request.incidentLocation,
+                actionsTaken = request.actionsTaken,
+                outcome = request.outcome,
+                durationMinutes = request.durationMinutes
+            )
+
+            if (record != null) {
+                call.respond(HttpStatusCode.Created, record)
+            } else {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "All call-out fields must be valid")
+                )
+            }
+        }
+
+        get("/hospitals/{hospitalId}/emergencies/{emergencyId}/callout") {
+
+            val hospitalId = call.parameters["hospitalId"]
+            val emergencyId = call.parameters["emergencyId"]
+
+            if (hospitalId == null || emergencyId == null) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Hospital ID and emergency ID are required")
+                )
+                return@get
+            }
+
+            val emergency = emergencyRepository.findById(emergencyId)
+
+            if (emergency == null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    mapOf("error" to "Emergency not found")
+                )
+                return@get
+            }
+
+            if (emergency.allocatedHospitalId != hospitalId) {
+                call.respond(
+                    HttpStatusCode.Forbidden,
+                    mapOf("error" to "This hospital is not assigned to the emergency")
+                )
+                return@get
+            }
+
+            val record = calloutService.getCallout(emergencyId)
+
+            if (record == null) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    mapOf("error" to "Call-out record not found")
+                )
+                return@get
+            }
+
+            call.respond(HttpStatusCode.OK, record)
+        }
+
 
 
 
