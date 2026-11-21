@@ -17,7 +17,8 @@ import uk.ac.napier.kwikmedical.hospital.HospitalCalloutRequest
 import uk.ac.napier.kwikmedical.service.HospitalCalloutService
 import uk.ac.napier.kwikmedical.service.CalloutService
 import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
-
+import uk.ac.napier.kwikmedical.hospital.HospitalData
+import uk.ac.napier.kwikmedical.hospital.PatientRecordUpdateRequest
 
 @Serializable
 data class Patient(
@@ -340,5 +341,58 @@ fun Application.configureRouting() {
         }
 
 
+
+    put("/hospitals/{hospitalId}/patients/{nhsNumber}") {
+        val hospitalId = call.parameters["hospitalId"]
+        val nhsNumber = call.parameters["nhsNumber"]
+
+        if (hospitalId == null || nhsNumber == null) {
+            call.respond(HttpStatusCode.BadRequest, "Missing hospital ID or NHS number")
+            return@put
+        }
+
+        val request = call.receive<PatientRecordUpdateRequest>()
+
+        if (request.medicalCondition.isBlank()) {
+            call.respond(HttpStatusCode.BadRequest, "Medical condition cannot be empty")
+            return@put
+        }
+
+        val hospitalExists = HospitalData.hospitals.any {
+            it.hospitalId == hospitalId
+        }
+
+        if (!hospitalExists) {
+            call.respond(HttpStatusCode.NotFound, "Hospital not found")
+            return@put
+        }
+
+        val hasCompletedEmergency = emergencyRepository
+            .findByHospitalId(hospitalId)
+            .any {
+                it.patientNhsNumber == nhsNumber && it.status == "COMPLETED"
+            }
+
+        if (!hasCompletedEmergency) {
+            call.respond(
+                HttpStatusCode.Forbidden,
+                "This hospital is not authorised to update this patient's record"
+            )
+            return@put
+        }
+
+        val updatedPatient = patientRepository.updateMedicalCondition(
+            nhsNumber,
+            request.medicalCondition.trim()
+        )
+
+        if (updatedPatient == null) {
+            call.respond(HttpStatusCode.NotFound, "Patient not found")
+            return@put
+        }
+
+        call.respond(HttpStatusCode.OK, updatedPatient)
+    }
     }
 }
+

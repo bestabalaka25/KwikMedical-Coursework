@@ -54,4 +54,34 @@ class PatientRepository {
             }
         }
     }
+
+    fun updateMedicalCondition(
+        nhsNumber: String,
+        medicalCondition: String
+    ): Patient? {
+
+        DatabaseFactory.getConnection().use { connection ->
+
+            connection.prepareStatement(
+                """
+            UPDATE patients
+            SET medical_condition = ?
+            WHERE nhs_number = ?
+            """.trimIndent()
+            ).use { statement ->
+
+                statement.setString(1, medicalCondition)
+                statement.setString(2, nhsNumber)
+
+                val updatedRows = statement.executeUpdate()
+
+                if (updatedRows == 0) {
+                    return null
+                }
+            }
+        }
+
+        return findByNhsNumber(nhsNumber)
+    }
+
 }

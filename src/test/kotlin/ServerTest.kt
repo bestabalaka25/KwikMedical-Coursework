@@ -1156,6 +1156,186 @@ class ServerTest {
         }
     }
 
+    @Test
+    fun `test hospital can update patient medical record after completed emergency`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency for an existing patient
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "patientNhsNumber": "NHS001",
+                    "incidentAddress": "15 Example Street, Edinburgh",
+                    "description": "Patient requires urgent medical assistance"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Update the patient's medical condition
+        val updateResponse = client.put(
+            "/hospitals/$hospitalId/patients/NHS001"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "medicalCondition": "Asthma and hypertension"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.OK, updateResponse.status)
+
+        // Retrieve the patient to verify the database update
+        val patientResponse = client.get("/patients/NHS001")
+
+        assertEquals(HttpStatusCode.OK, patientResponse.status)
+
+        val updatedPatient = Json.decodeFromString<Patient>(
+            patientResponse.bodyAsText()
+        )
+
+        assertEquals("Asthma and hypertension", updatedPatient.medicalCondition)
+    }
+
+    @Test
+    fun `test reject patient record update from unauthorised hospital`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "patientNhsNumber": "NHS001",
+                    "incidentAddress": "15 Example Street, Edinburgh",
+                    "description": "Urgent medical assistance required"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        // Attempt an update using a different hospital
+        val response = client.put("/hospitals/H020/patients/NHS001") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "medicalCondition": "Updated condition"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Forbidden, response.status)
+
+        // Confirm the original patient record remains unchanged
+        val patientResponse = client.get("/patients/NHS001")
+
+        assertEquals(HttpStatusCode.OK, patientResponse.status)
+
+        val patient = Json.decodeFromString<Patient>(
+            patientResponse.bodyAsText()
+        )
+
+        assertEquals("Asthma", patient.medicalCondition)
+    }
+
+    @Test
+    fun `test reject patient record update with blank medical condition`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Create an emergency
+        val emergencyResponse = client.post("/emergencies") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "patientNhsNumber": "NHS001",
+                    "incidentAddress": "15 Example Street, Edinburgh",
+                    "description": "Urgent medical assistance required"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.Created, emergencyResponse.status)
+
+        val emergency = Json.decodeFromString<Emergency>(
+            emergencyResponse.bodyAsText()
+        )
+
+        val hospitalId = emergency.allocatedHospitalId!!
+        val emergencyId = emergency.emergencyId
+
+        // Complete the emergency lifecycle
+        for (status in listOf("EN_ROUTE", "ARRIVED", "COMPLETED")) {
+            val response = client.put(
+                "/hospitals/$hospitalId/emergencies/$emergencyId/status"
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"status":"$status"}""")
+            }
+
+            assertEquals(HttpStatusCode.OK, response.status)
+        }
+
+        // Attempt to update the record with a blank condition
+        val updateResponse = client.put(
+            "/hospitals/$hospitalId/patients/NHS001"
+        ) {
+            contentType(ContentType.Application.Json)
+            setBody("""{"medicalCondition":" "}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, updateResponse.status)
+
+        // Confirm the original condition remains unchanged
+        val patientResponse = client.get("/patients/NHS001")
+
+        assertEquals(HttpStatusCode.OK, patientResponse.status)
+
+        val patient = Json.decodeFromString<Patient>(
+            patientResponse.bodyAsText()
+        )
+
+        assertEquals("Asthma", patient.medicalCondition)
+    }
 
 
 }
