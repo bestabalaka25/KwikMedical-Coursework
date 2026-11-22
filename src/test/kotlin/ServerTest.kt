@@ -1337,5 +1337,43 @@ class ServerTest {
         assertEquals("Asthma", patient.medicalCondition)
     }
 
+    @Test
+    fun `test reject patient record update from unknown hospital`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        val response = client.put("/hospitals/H999/patients/NHS001") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "medicalCondition": "Updated condition"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+    @Test
+    fun `test reject patient record update for unknown patient`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        val response = client.put("/hospitals/H001/patients/UNKNOWN") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                    "medicalCondition": "Updated condition"
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
 
 }

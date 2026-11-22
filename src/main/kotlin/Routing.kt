@@ -366,6 +366,12 @@ fun Application.configureRouting() {
             call.respond(HttpStatusCode.NotFound, "Hospital not found")
             return@put
         }
+        val patientExists = patientRepository.findByNhsNumber(nhsNumber)
+
+        if (patientExists == null) {
+            call.respond(HttpStatusCode.NotFound, "Patient not found")
+            return@put
+        }
 
         val hasCompletedEmergency = emergencyRepository
             .findByHospitalId(hospitalId)
