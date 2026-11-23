@@ -1,4 +1,3 @@
-
 package uk.ac.napier.kwikmedical
 
 import io.ktor.http.HttpStatusCode
@@ -14,7 +13,11 @@ import io.ktor.server.plugins.BadRequestException
 fun Application.rootModule() {
 
     install(ContentNegotiation) {
-        json()
+        json(
+            kotlinx.serialization.json.Json {
+                ignoreUnknownKeys = true
+            }
+        )
     }
 
     install(StatusPages) {

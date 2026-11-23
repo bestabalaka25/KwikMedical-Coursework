@@ -15,13 +15,16 @@ import uk.ac.napier.kwikmedical.emergency.Emergency
 import kotlinx.serialization.decodeFromString
 import io.ktor.client.request.put
 import uk.ac.napier.kwikmedical.repository.AmbulanceRepository
-import uk.ac.napier.kwikmedical.service.AmbulanceAllocationService
-import kotlinx.coroutines.runBlocking
 import uk.ac.napier.kwikmedical.ambulance.AmbulanceSmartphoneClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
-
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import uk.ac.napier.kwikmedical.ambulance.Ambulance
+import uk.ac.napier.kwikmedical.database.DatabaseFactory
+import java.sql.SQLException
 private fun configureTestDatabase() {
     System.setProperty(
         "kwikmedical.database.url",
@@ -447,7 +450,9 @@ class ServerTest {
             rootModule()
         }
 
-        val ambulanceRepository = AmbulanceRepository()
+        client.get("/")
+
+        val repository = AmbulanceRepository()
 
         // Create emergency
         val createResponse = client.post("/emergencies") {
@@ -472,7 +477,7 @@ class ServerTest {
         val ambulanceId = emergency.allocatedAmbulanceId!!
 
         // Check ambulance is initially unavailable
-        var ambulance = ambulanceRepository.findAll()
+        var ambulance = repository.findAll()
             .first { it.ambulanceId == ambulanceId }
 
         assertFalse(ambulance.available)
@@ -505,7 +510,7 @@ class ServerTest {
         assertEquals(HttpStatusCode.OK, completedResponse.status)
 
         // Verify ambulance is available again
-        ambulance = ambulanceRepository.findAll()
+        ambulance = repository.findAll()
             .first { it.ambulanceId == ambulanceId }
 
         assertTrue(ambulance.available)
@@ -1373,6 +1378,103 @@ class ServerTest {
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+    @Test
+    fun `test simultaneous requests cannot reserve the same ambulance`() = testApplication {
+        configureTestDatabase()
+
+        application {
+            rootModule()
+        }
+
+        client.get("/")
+
+        val repository = AmbulanceRepository()
+        val executor = Executors.newFixedThreadPool(2)
+
+        val ready = CountDownLatch(2)
+        val start = CountDownLatch(1)
+
+        try {
+            val requests = (1..2).map {
+                executor.submit<Ambulance?> {
+                    ready.countDown()
+                    start.await()
+
+                    repository.reserveAvailableForHospital("H001")
+                }
+            }
+
+            // Wait until both threads are ready
+            assertTrue(ready.await(5, TimeUnit.SECONDS))
+
+            // Allow both requests to start together
+            start.countDown()
+
+            val results = requests.map {
+                it.get(10, TimeUnit.SECONDS)
+            }
+
+            // Exactly one request should reserve the ambulance
+            assertEquals(1, results.count { it != null })
+
+            // Both requests must not receive the same ambulance
+            val allocatedAmbulances = results.filterNotNull()
+
+            assertEquals(
+                1,
+                allocatedAmbulances.map { it.ambulanceId }.distinct().size
+            )
+
+            // Confirm the ambulance is unavailable in the database
+            val ambulance = repository.findAll()
+                .first { it.hospitalId == "H001" }
+
+            assertFalse(ambulance.available)
+
+        } finally {
+            executor.shutdownNow()
+        }
+    }
+    @Test
+    fun `test emergency cannot reference nonexistent ambulance`() = testApplication {
+        configureTestDatabase()
+        application { rootModule() }
+
+        // Initialise the database and seed sample data
+        client.get("/")
+
+        val exception = assertFailsWith<SQLException> {
+            DatabaseFactory.getConnection().use { connection ->
+                connection.prepareStatement(
+                    """
+                INSERT INTO emergencies (
+                    emergency_id,
+                    patient_nhs_number,
+                    incident_address,
+                    description,
+                    status,
+                    allocated_hospital_id,
+                    allocated_ambulance_id
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """.trimIndent()
+                ).use { statement ->
+
+                    statement.setString(1, "TEST-EMERGENCY-001")
+                    statement.setString(2, "NHS001")
+                    statement.setString(3, "Test Street, Edinburgh")
+                    statement.setString(4, "Test emergency")
+                    statement.setString(5, "ALLOCATED")
+                    statement.setString(6, "H001")
+                    statement.setString(7, "NONEXISTENT-AMBULANCE")
+
+                    statement.executeUpdate()
+                }
+            }
+        }
+
+        assertNotNull(exception)
     }
 
 

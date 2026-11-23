@@ -19,7 +19,7 @@ import uk.ac.napier.kwikmedical.service.CalloutService
 import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
 import uk.ac.napier.kwikmedical.hospital.HospitalData
 import uk.ac.napier.kwikmedical.hospital.PatientRecordUpdateRequest
-
+import uk.ac.napier.kwikmedical.repository.DuplicateCalloutException
 @Serializable
 data class Patient(
     val nhsNumber: String,
@@ -27,6 +27,7 @@ data class Patient(
     val address: String,
     val medicalCondition: String
 )
+
 @Serializable
 data class DispatchResponse(
     val emergency: Emergency,
@@ -41,7 +42,6 @@ fun Application.configureRouting() {
     val hospitalCalloutService = HospitalCalloutService()
     val calloutService = CalloutService()
 
-
     routing {
 
         get("/") {
@@ -55,7 +55,7 @@ fun Application.configureRouting() {
         get("/patients/{nhsNumber}") {
             val nhsNumber = call.parameters["nhsNumber"]
 
-            if (nhsNumber == null) {
+            if (nhsNumber.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Patient number is required")
@@ -75,7 +75,6 @@ fun Application.configureRouting() {
             }
         }
 
-
         post("/emergencies") {
             val request = call.receive<EmergencyRequest>()
 
@@ -86,7 +85,9 @@ fun Application.configureRouting() {
             ) {
                 call.respond(
                     HttpStatusCode.BadRequest,
-                    mapOf("error" to "Patient number, incident address and description are required")
+                    mapOf(
+                        "error" to "Patient number, incident address and description are required"
+                    )
                 )
                 return@post
             }
@@ -107,7 +108,6 @@ fun Application.configureRouting() {
             }
         }
 
-
         get("/emergencies") {
             call.respond(emergencyRepository.findAll())
         }
@@ -115,10 +115,22 @@ fun Application.configureRouting() {
         get("/hospitals/{hospitalId}/emergencies") {
             val hospitalId = call.parameters["hospitalId"]
 
-            if (hospitalId == null) {
+            if (hospitalId.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Hospital ID is required")
+                )
+                return@get
+            }
+
+            val hospitalExists = HospitalData.hospitals.any {
+                it.hospitalId == hospitalId
+            }
+
+            if (!hospitalExists) {
+                call.respond(
+                    HttpStatusCode.NotFound,
+                    mapOf("error" to "Hospital not found")
                 )
                 return@get
             }
@@ -129,11 +141,10 @@ fun Application.configureRouting() {
         }
 
         put("/hospitals/{hospitalId}/emergencies/{emergencyId}/status") {
-
             val hospitalId = call.parameters["hospitalId"]
             val emergencyId = call.parameters["emergencyId"]
 
-            if (hospitalId == null || emergencyId == null) {
+            if (hospitalId.isNullOrBlank() || emergencyId.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Hospital ID and emergency ID are required")
@@ -141,8 +152,8 @@ fun Application.configureRouting() {
                 return@put
             }
 
-
             val request = call.receive<HospitalCalloutRequest>()
+
             if (request.status.isBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
@@ -171,11 +182,10 @@ fun Application.configureRouting() {
         }
 
         post("/hospitals/{hospitalId}/emergencies/{emergencyId}/callout") {
-
             val hospitalId = call.parameters["hospitalId"]
             val emergencyId = call.parameters["emergencyId"]
 
-            if (hospitalId == null || emergencyId == null) {
+            if (hospitalId.isNullOrBlank() || emergencyId.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Hospital ID and emergency ID are required")
@@ -219,15 +229,27 @@ fun Application.configureRouting() {
 
             val request = call.receive<CalloutRecordRequest>()
 
-            val record = calloutService.recordCallout(
-                emergencyId = emergencyId,
-                crewMembers = request.crewMembers,
-                incidentDateTime = request.incidentDateTime,
-                incidentLocation = request.incidentLocation,
-                actionsTaken = request.actionsTaken,
-                outcome = request.outcome,
-                durationMinutes = request.durationMinutes
-            )
+            val record = try {
+                calloutService.recordCallout(
+                    emergencyId = emergencyId,
+                    crewMembers = request.crewMembers,
+                    incidentDateTime = request.incidentDateTime,
+                    incidentLocation = request.incidentLocation,
+                    actionsTaken = request.actionsTaken,
+                    outcome = request.outcome,
+                    durationMinutes = request.durationMinutes
+                )
+            } catch (exception: DuplicateCalloutException) {
+                call.respond(
+                    HttpStatusCode.Conflict,
+                    mapOf(
+                        "error" to (exception.message
+                            ?: "A call-out record already exists for this emergency")
+                    )
+                )
+                return@post
+            }
+
 
             if (record != null) {
                 call.respond(HttpStatusCode.Created, record)
@@ -240,11 +262,10 @@ fun Application.configureRouting() {
         }
 
         get("/hospitals/{hospitalId}/emergencies/{emergencyId}/callout") {
-
             val hospitalId = call.parameters["hospitalId"]
             val emergencyId = call.parameters["emergencyId"]
 
-            if (hospitalId == null || emergencyId == null) {
+            if (hospitalId.isNullOrBlank() || emergencyId.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Hospital ID and emergency ID are required")
@@ -283,14 +304,10 @@ fun Application.configureRouting() {
             call.respond(HttpStatusCode.OK, record)
         }
 
-
-
-
-
         get("/emergencies/{emergencyId}") {
             val emergencyId = call.parameters["emergencyId"]
 
-            if (emergencyId == null) {
+            if (emergencyId.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Emergency ID is required")
@@ -310,12 +327,10 @@ fun Application.configureRouting() {
             }
         }
 
-
-
         get("/dispatch/{emergencyId}") {
             val emergencyId = call.parameters["emergencyId"]
 
-            if (emergencyId == null) {
+            if (emergencyId.isNullOrBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf("error" to "Emergency ID is required")
@@ -340,65 +355,70 @@ fun Application.configureRouting() {
             }
         }
 
+        put("/hospitals/{hospitalId}/patients/{nhsNumber}") {
+            val hospitalId = call.parameters["hospitalId"]
+            val nhsNumber = call.parameters["nhsNumber"]
 
-
-    put("/hospitals/{hospitalId}/patients/{nhsNumber}") {
-        val hospitalId = call.parameters["hospitalId"]
-        val nhsNumber = call.parameters["nhsNumber"]
-
-        if (hospitalId == null || nhsNumber == null) {
-            call.respond(HttpStatusCode.BadRequest, "Missing hospital ID or NHS number")
-            return@put
-        }
-
-        val request = call.receive<PatientRecordUpdateRequest>()
-
-        if (request.medicalCondition.isBlank()) {
-            call.respond(HttpStatusCode.BadRequest, "Medical condition cannot be empty")
-            return@put
-        }
-
-        val hospitalExists = HospitalData.hospitals.any {
-            it.hospitalId == hospitalId
-        }
-
-        if (!hospitalExists) {
-            call.respond(HttpStatusCode.NotFound, "Hospital not found")
-            return@put
-        }
-        val patientExists = patientRepository.findByNhsNumber(nhsNumber)
-
-        if (patientExists == null) {
-            call.respond(HttpStatusCode.NotFound, "Patient not found")
-            return@put
-        }
-
-        val hasCompletedEmergency = emergencyRepository
-            .findByHospitalId(hospitalId)
-            .any {
-                it.patientNhsNumber == nhsNumber && it.status == "COMPLETED"
+            if (hospitalId.isNullOrBlank() || nhsNumber.isNullOrBlank()) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Missing hospital ID or NHS number"
+                )
+                return@put
             }
 
-        if (!hasCompletedEmergency) {
-            call.respond(
-                HttpStatusCode.Forbidden,
-                "This hospital is not authorised to update this patient's record"
+            val request = call.receive<PatientRecordUpdateRequest>()
+
+            if (request.medicalCondition.isBlank()) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    "Medical condition cannot be empty"
+                )
+                return@put
+            }
+
+            val hospitalExists = HospitalData.hospitals.any {
+                it.hospitalId == hospitalId
+            }
+
+            if (!hospitalExists) {
+                call.respond(HttpStatusCode.NotFound, "Hospital not found")
+                return@put
+            }
+
+            val patientExists = patientRepository.findByNhsNumber(nhsNumber)
+
+            if (patientExists == null) {
+                call.respond(HttpStatusCode.NotFound, "Patient not found")
+                return@put
+            }
+
+            val hasCompletedEmergency = emergencyRepository
+                .findByHospitalId(hospitalId)
+                .any {
+                    it.patientNhsNumber == nhsNumber &&
+                            it.status == "COMPLETED"
+                }
+
+            if (!hasCompletedEmergency) {
+                call.respond(
+                    HttpStatusCode.Forbidden,
+                    "This hospital is not authorised to update this patient's record"
+                )
+                return@put
+            }
+
+            val updatedPatient = patientRepository.updateMedicalCondition(
+                nhsNumber,
+                request.medicalCondition.trim()
             )
-            return@put
+
+            if (updatedPatient == null) {
+                call.respond(HttpStatusCode.NotFound, "Patient not found")
+                return@put
+            }
+
+            call.respond(HttpStatusCode.OK, updatedPatient)
         }
-
-        val updatedPatient = patientRepository.updateMedicalCondition(
-            nhsNumber,
-            request.medicalCondition.trim()
-        )
-
-        if (updatedPatient == null) {
-            call.respond(HttpStatusCode.NotFound, "Patient not found")
-            return@put
-        }
-
-        call.respond(HttpStatusCode.OK, updatedPatient)
-    }
     }
 }
-

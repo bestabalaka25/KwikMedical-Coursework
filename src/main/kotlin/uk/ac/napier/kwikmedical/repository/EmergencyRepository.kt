@@ -30,7 +30,11 @@ class EmergencyRepository {
                 statement.setString(6, emergency.allocatedHospitalId)
                 statement.setString(7, emergency.allocatedAmbulanceId)
 
-                statement.executeUpdate()
+                val insertedRows = statement.executeUpdate()
+
+                check(insertedRows == 1) {
+                    "Emergency could not be saved."
+                }
             }
         }
 
@@ -42,13 +46,23 @@ class EmergencyRepository {
 
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
-                "SELECT * FROM emergencies"
+                """
+            SELECT
+                emergency_id,
+                patient_nhs_number,
+                incident_address,
+                description,
+                status,
+                allocated_hospital_id,
+                allocated_ambulance_id
+            FROM emergencies
+            """.trimIndent()
             ).use { statement ->
 
-                val results = statement.executeQuery()
-
-                while (results.next()) {
-                    emergencies.add(mapEmergency(results))
+                statement.executeQuery().use { results ->
+                    while (results.next()) {
+                        emergencies.add(mapEmergency(results))
+                    }
                 }
             }
         }
@@ -57,48 +71,78 @@ class EmergencyRepository {
     }
 
     fun findById(emergencyId: String): Emergency? {
+        if (emergencyId.isBlank()) {
+            return null
+        }
+
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
-                "SELECT * FROM emergencies WHERE emergency_id = ?"
+                """
+            SELECT
+                emergency_id,
+                patient_nhs_number,
+                incident_address,
+                description,
+                status,
+                allocated_hospital_id,
+                allocated_ambulance_id
+            FROM emergencies
+            WHERE emergency_id = ?
+            """.trimIndent()
             ).use { statement ->
 
                 statement.setString(1, emergencyId)
 
-                val results = statement.executeQuery()
-
-                if (results.next()) {
-                    return mapEmergency(results)
+                statement.executeQuery().use { results ->
+                    return if (results.next()) {
+                        mapEmergency(results)
+                    } else {
+                        null
+                    }
                 }
             }
         }
-
-        return null
     }
 
     fun findByHospitalId(hospitalId: String): List<Emergency> {
+        if (hospitalId.isBlank()) {
+            return emptyList()
+        }
+
         val emergencies = mutableListOf<Emergency>()
 
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
                 """
-            SELECT * FROM emergencies
+            SELECT
+                emergency_id,
+                patient_nhs_number,
+                incident_address,
+                description,
+                status,
+                allocated_hospital_id,
+                allocated_ambulance_id
+            FROM emergencies
             WHERE allocated_hospital_id = ?
             """.trimIndent()
             ).use { statement ->
+
                 statement.setString(1, hospitalId)
 
-                val results = statement.executeQuery()
-
-                while (results.next()) {
-                    emergencies.add(mapEmergency(results))
+                statement.executeQuery().use { results ->
+                    while (results.next()) {
+                        emergencies.add(mapEmergency(results))
+                    }
                 }
             }
         }
 
         return emergencies
     }
-
     fun completeAndReleaseAmbulance(emergencyId: String): Boolean {
+        if (emergencyId.isBlank()) {
+            return false
+        }
         DatabaseFactory.getConnection().use { connection ->
             connection.autoCommit = false
 
@@ -166,7 +210,12 @@ class EmergencyRepository {
                 return true
 
             } catch (exception: Exception) {
-                connection.rollback()
+                try {
+                    connection.rollback()
+                } catch (rollbackException: Exception) {
+                    exception.addSuppressed(rollbackException)
+                }
+
                 throw exception
             }
         }
@@ -175,6 +224,13 @@ class EmergencyRepository {
 
 
     fun updateStatus(emergencyId: String, expectedStatus: String, newStatus: String): Boolean {
+        if (
+            emergencyId.isBlank() ||
+            expectedStatus.isBlank() ||
+            newStatus.isBlank()
+        ) {
+            return false
+        }
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
                 """

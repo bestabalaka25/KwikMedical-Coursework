@@ -3,6 +3,7 @@ package uk.ac.napier.kwikmedical
 import io.ktor.server.application.Application
 import io.ktor.server.engine.embeddedServer
 
+
 fun main(args: Array<String>) {
     embeddedServer(
         factory = io.ktor.server.netty.Netty,

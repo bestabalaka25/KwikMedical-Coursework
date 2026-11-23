@@ -1,10 +1,10 @@
-
+﻿
 package uk.ac.napier.kwikmedical.service
 
 import uk.ac.napier.kwikmedical.emergency.Emergency
 import uk.ac.napier.kwikmedical.repository.EmergencyRepository
 import uk.ac.napier.kwikmedical.repository.PatientRepository
-
+import uk.ac.napier.kwikmedical.Patient
 class DispatchService {
 
     private val emergencyRepository = EmergencyRepository()
@@ -12,7 +12,7 @@ class DispatchService {
 
     data class DispatchDetails(
         val emergency: Emergency,
-        val patient: uk.ac.napier.kwikmedical.Patient
+        val patient: Patient
     )
 
     fun getDispatchDetails(emergencyId: String): DispatchDetails? {
@@ -29,3 +29,4 @@ class DispatchService {
         )
     }
 }
+

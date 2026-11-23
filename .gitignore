@@ -5,3 +5,5 @@ build/
 *.iml
 data/
 local.properties
+.kotlin/
+.vs/

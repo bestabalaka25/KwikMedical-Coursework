@@ -1,4 +1,4 @@
-
+﻿
 package uk.ac.napier.kwikmedical.repository
 
 import uk.ac.napier.kwikmedical.database.DatabaseFactory
@@ -10,18 +10,28 @@ class PatientRepository {
         val patients = mutableListOf<Patient>()
 
         DatabaseFactory.getConnection().use { connection ->
+
             connection.createStatement().use { statement ->
+
                 statement.executeQuery(
-                    "SELECT * FROM patients ORDER BY nhs_number"
+                    """
+                    SELECT
+                        nhs_number,
+                        name,
+                        address,
+                        medical_condition
+                    FROM patients
+                    ORDER BY nhs_number
+                    """.trimIndent()
                 ).use { result ->
+
                     while (result.next()) {
                         patients.add(
                             Patient(
                                 nhsNumber = result.getString("nhs_number"),
                                 name = result.getString("name"),
                                 address = result.getString("address"),
-                                medicalCondition =
-                                result.getString("medical_condition")
+                                medicalCondition = result.getString("medical_condition")
                             )
                         )
                     }
@@ -33,13 +43,29 @@ class PatientRepository {
     }
 
     fun findByNhsNumber(nhsNumber: String): Patient? {
+
+        if (nhsNumber.isBlank()) {
+            return null
+        }
+
         DatabaseFactory.getConnection().use { connection ->
+
             connection.prepareStatement(
-                "SELECT * FROM patients WHERE nhs_number = ?"
+                """
+                SELECT
+                    nhs_number,
+                    name,
+                    address,
+                    medical_condition
+                FROM patients
+                WHERE nhs_number = ?
+                """.trimIndent()
             ).use { statement ->
-                statement.setString(1, nhsNumber)
+
+                statement.setString(1, nhsNumber.trim())
 
                 statement.executeQuery().use { result ->
+
                     return if (result.next()) {
                         Patient(
                             nhsNumber = result.getString("nhs_number"),
@@ -60,28 +86,38 @@ class PatientRepository {
         medicalCondition: String
     ): Patient? {
 
+        val cleanNhsNumber = nhsNumber.trim()
+        val cleanMedicalCondition = medicalCondition.trim()
+
+        if (
+            cleanNhsNumber.isBlank() ||
+            cleanMedicalCondition.isBlank()
+        ) {
+            return null
+        }
+
         DatabaseFactory.getConnection().use { connection ->
 
             connection.prepareStatement(
                 """
-            UPDATE patients
-            SET medical_condition = ?
-            WHERE nhs_number = ?
-            """.trimIndent()
+                UPDATE patients
+                SET medical_condition = ?
+                WHERE nhs_number = ?
+                """.trimIndent()
             ).use { statement ->
 
-                statement.setString(1, medicalCondition)
-                statement.setString(2, nhsNumber)
+                statement.setString(1, cleanMedicalCondition)
+                statement.setString(2, cleanNhsNumber)
 
                 val updatedRows = statement.executeUpdate()
 
-                if (updatedRows == 0) {
+                if (updatedRows != 1) {
                     return null
                 }
             }
         }
 
-        return findByNhsNumber(nhsNumber)
+        return findByNhsNumber(cleanNhsNumber)
     }
-
 }
+

@@ -20,24 +20,39 @@ class HospitalCalloutService {
         newStatus: String
     ): Boolean {
 
+        // Validate input
+        if (
+            hospitalId.isBlank() ||
+            emergencyId.isBlank() ||
+            newStatus.isBlank()
+        ) {
+            return false
+        }
+
+        // Retrieve emergency
         val emergency = emergencyRepository.findById(emergencyId)
             ?: return false
 
+        // Check hospital ownership
         if (emergency.allocatedHospitalId != hospitalId) {
             return false
         }
 
+        // Determine the next permitted status
         val expectedNextStatus = allowedTransitions[emergency.status]
             ?: return false
 
+        // Reject invalid transitions
         if (newStatus != expectedNextStatus) {
             return false
         }
 
+        // Complete emergency and release ambulance
         if (newStatus == "COMPLETED") {
             return emergencyService.completeEmergency(emergencyId)
         }
 
+        // Update emergency status
         return emergencyRepository.updateStatus(
             emergencyId,
             emergency.status,

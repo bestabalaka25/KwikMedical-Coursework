@@ -7,6 +7,9 @@ import uk.ac.napier.kwikmedical.database.DatabaseFactory
 class AmbulanceRepository {
 
     fun reserveAvailableForHospital(hospitalId: String): Ambulance? {
+        if (hospitalId.isBlank()) {
+            return null
+        }
         DatabaseFactory.getConnection().use { connection ->
 
             connection.autoCommit = false
@@ -65,13 +68,21 @@ class AmbulanceRepository {
                 return ambulance
 
             } catch (exception: Exception) {
-                connection.rollback()
+                try {
+                    connection.rollback()
+                } catch (rollbackException: Exception) {
+                    exception.addSuppressed(rollbackException)
+                }
+
                 throw exception
             }
         }
     }
 
     fun hasAvailableForHospital(hospitalId: String): Boolean {
+        if (hospitalId.isBlank()) {
+            return false
+        }
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
                 """
@@ -120,6 +131,9 @@ class AmbulanceRepository {
 
 
     fun release(ambulanceId: String): Boolean {
+        if (ambulanceId.isBlank()) {
+            return false
+        }
         DatabaseFactory.getConnection().use { connection ->
             connection.prepareStatement(
                 """

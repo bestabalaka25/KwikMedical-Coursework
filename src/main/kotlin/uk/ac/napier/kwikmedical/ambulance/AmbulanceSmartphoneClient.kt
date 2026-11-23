@@ -1,4 +1,4 @@
-
+﻿
 package uk.ac.napier.kwikmedical.ambulance
 
 import io.ktor.client.HttpClient
@@ -11,27 +11,45 @@ import io.ktor.client.call.body
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 import uk.ac.napier.kwikmedical.DispatchResponse
 import uk.ac.napier.kwikmedical.emergency.CalloutRecord
 import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
-
 class AmbulanceSmartphoneClient(
-    private val baseUrl: String = "http://localhost:8080",
+    baseUrl: String = "http://localhost:8080",
     private val client: HttpClient = HttpClient(CIO) {
         install(ContentNegotiation) {
-            json()
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                }
+            )
         }
     }
 ) {
 
+    private val baseUrl = baseUrl.trimEnd('/')
+
     private fun endpoint(path: String): String {
-        return if (baseUrl.isBlank()) path else "$baseUrl$path"
+        require(path.startsWith("/")) {
+            "Endpoint path must start with /"
+        }
+
+        return if (this.baseUrl.isBlank()) {
+            path
+        } else {
+            "${this.baseUrl}$path"
+        }
     }
 
     // Receive emergency dispatch and patient information
     suspend fun receiveDispatch(
         emergencyId: String
     ): DispatchResponse {
+        require(emergencyId.isNotBlank()) {
+            "Emergency ID cannot be empty"
+        }
+
         return client.get(
             endpoint("/dispatch/$emergencyId")
         ).body()
@@ -43,6 +61,14 @@ class AmbulanceSmartphoneClient(
         emergencyId: String,
         request: CalloutRecordRequest
     ): CalloutRecord {
+        require(hospitalId.isNotBlank()) {
+            "Hospital ID cannot be empty"
+        }
+
+        require(emergencyId.isNotBlank()) {
+            "Emergency ID cannot be empty"
+        }
+
         return client.post(
             endpoint("/hospitals/$hospitalId/emergencies/$emergencyId/callout")
         ) {
@@ -56,6 +82,14 @@ class AmbulanceSmartphoneClient(
         hospitalId: String,
         emergencyId: String
     ): CalloutRecord {
+        require(hospitalId.isNotBlank()) {
+            "Hospital ID cannot be empty"
+        }
+
+        require(emergencyId.isNotBlank()) {
+            "Emergency ID cannot be empty"
+        }
+
         return client.get(
             endpoint("/hospitals/$hospitalId/emergencies/$emergencyId/callout")
         ).body()
@@ -66,3 +100,4 @@ class AmbulanceSmartphoneClient(
         client.close()
     }
 }
+

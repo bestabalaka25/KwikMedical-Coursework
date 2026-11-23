@@ -1,15 +1,16 @@
+
 package uk.ac.napier.kwikmedical.service
 
 import uk.ac.napier.kwikmedical.emergency.CalloutRecord
 import uk.ac.napier.kwikmedical.repository.CalloutRepository
-import java.util.UUID
 import java.time.LocalDateTime
 import java.time.format.DateTimeParseException
-
+import java.util.UUID
 
 class CalloutService {
 
     private val calloutRepository = CalloutRepository()
+
     private fun isValidDateTime(value: String): Boolean {
         return try {
             LocalDateTime.parse(value)
@@ -18,7 +19,6 @@ class CalloutService {
             false
         }
     }
-
 
     fun recordCallout(
         emergencyId: String,
@@ -30,25 +30,35 @@ class CalloutService {
         durationMinutes: Int
     ): CalloutRecord? {
 
+        // Normalise input by removing surrounding whitespace
+        val cleanCrewMembers = crewMembers.trim()
+        val cleanDateTime = incidentDateTime.trim()
+        val cleanLocation = incidentLocation.trim()
+        val cleanActions = actionsTaken.trim()
+        val cleanOutcome = outcome.trim()
+
+        // Validate input
         if (
-            crewMembers.isBlank() ||
-            !isValidDateTime(incidentDateTime) ||
-            incidentLocation.isBlank() ||
-            actionsTaken.isBlank() ||
-            outcome.isBlank() ||
+            emergencyId.isBlank() ||
+            cleanCrewMembers.isBlank() ||
+            !isValidDateTime(cleanDateTime) ||
+            cleanLocation.isBlank() ||
+            cleanActions.isBlank() ||
+            cleanOutcome.isBlank() ||
             durationMinutes < 0
         ) {
             return null
         }
 
+        // Create call-out record
         val record = CalloutRecord(
             calloutId = UUID.randomUUID().toString(),
             emergencyId = emergencyId,
-            crewMembers = crewMembers.trim(),
-            incidentDateTime = incidentDateTime.trim(),
-            incidentLocation = incidentLocation.trim(),
-            actionsTaken = actionsTaken.trim(),
-            outcome = outcome.trim(),
+            crewMembers = cleanCrewMembers,
+            incidentDateTime = cleanDateTime,
+            incidentLocation = cleanLocation,
+            actionsTaken = cleanActions,
+            outcome = cleanOutcome,
             durationMinutes = durationMinutes
         )
 
@@ -56,6 +66,10 @@ class CalloutService {
     }
 
     fun getCallout(emergencyId: String): CalloutRecord? {
+        if (emergencyId.isBlank()) {
+            return null
+        }
+
         return calloutRepository.findByEmergencyId(emergencyId)
     }
 }

@@ -3,6 +3,7 @@ package uk.ac.napier.kwikmedical.database
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.sql.Connection
 import java.sql.DriverManager
 
 object DatabaseFactory {
@@ -75,36 +76,59 @@ object DatabaseFactory {
                     """.trimIndent()
                 )
             }
+
             // Create call-out records table
             connection.createStatement().use { statement ->
                 statement.execute(
                     """
-        CREATE TABLE IF NOT EXISTS callout_records (
-            callout_id VARCHAR(36) PRIMARY KEY,
-            emergency_id VARCHAR(36) NOT NULL UNIQUE,
-            crew_members VARCHAR(500) NOT NULL,
-            incident_date_time VARCHAR(50) NOT NULL,
-            incident_location VARCHAR(255) NOT NULL,
-            actions_taken VARCHAR(2000) NOT NULL,
-            outcome VARCHAR(1000) NOT NULL,
-            duration_minutes INT NOT NULL CHECK (duration_minutes >= 0),
-            FOREIGN KEY (emergency_id)
-                REFERENCES emergencies(emergency_id)
-        )
-        """.trimIndent()
+                    CREATE TABLE IF NOT EXISTS callout_records (
+                        callout_id VARCHAR(36) PRIMARY KEY,
+                        emergency_id VARCHAR(36) NOT NULL UNIQUE,
+                        crew_members VARCHAR(500) NOT NULL,
+                        incident_date_time VARCHAR(50) NOT NULL,
+                        incident_location VARCHAR(255) NOT NULL,
+                        actions_taken VARCHAR(2000) NOT NULL,
+                        outcome VARCHAR(1000) NOT NULL,
+                        duration_minutes INT NOT NULL CHECK (duration_minutes >= 0),
+                        FOREIGN KEY (emergency_id)
+                            REFERENCES emergencies(emergency_id)
+                    )
+                    """.trimIndent()
                 )
             }
 
             // Seed sample data
             seedPatients(connection)
             seedAmbulances(connection)
+
+            // Add ambulance foreign key
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """
+                    ALTER TABLE emergencies
+                    ADD CONSTRAINT IF NOT EXISTS fk_emergencies_ambulance
+                    FOREIGN KEY (allocated_ambulance_id)
+                    REFERENCES ambulances(ambulance_id)
+                    """.trimIndent()
+                )
+            }
         }
     }
 
-    private fun seedPatients(connection: java.sql.Connection) {
+    private fun seedPatients(connection: Connection) {
         val samplePatients = listOf(
-            arrayOf("NHS001", "Alex Morgan", "10 Example Street, Edinburgh", "Asthma"),
-            arrayOf("NHS002", "Jamie Taylor", "20 Sample Road, Edinburgh", "Diabetes")
+            arrayOf(
+                "NHS001",
+                "Alex Morgan",
+                "10 Example Street, Edinburgh",
+                "Asthma"
+            ),
+            arrayOf(
+                "NHS002",
+                "Jamie Taylor",
+                "20 Sample Road, Edinburgh",
+                "Diabetes"
+            )
         )
 
         connection.prepareStatement(
@@ -117,18 +141,20 @@ object DatabaseFactory {
             )
             """.trimIndent()
         ).use { statement ->
+
             for (patient in samplePatients) {
                 statement.setString(1, patient[0])
                 statement.setString(2, patient[1])
                 statement.setString(3, patient[2])
                 statement.setString(4, patient[3])
                 statement.setString(5, patient[0])
+
                 statement.executeUpdate()
             }
         }
     }
 
-    private fun seedAmbulances(connection: java.sql.Connection) {
+    private fun seedAmbulances(connection: Connection) {
         for (i in 1..20) {
             val id = i.toString().padStart(3, '0')
 
@@ -146,10 +172,12 @@ object DatabaseFactory {
                 )
                 """.trimIndent()
             ).use { statement ->
+
                 statement.setString(1, "A$id")
                 statement.setString(2, "H$id")
                 statement.setString(3, "AMB-$id")
                 statement.setString(4, "A$id")
+
                 statement.executeUpdate()
             }
         }
