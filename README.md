@@ -1,19 +1,21 @@
 KWIKMEDICAL
+
 Overview
+
 KwikMedical is an application which has been produced for the Software Architecture module at Edinburgh Napier University. It enables users to both manage emergency requests and patient data and to assign ambulances to hospitals.
 It has been developed using the Kotlin and Ktor technologies. A database has been used to store data. Furthermore, it also includes a simulated ambulance smart phone application which can be used to show how ambulance personnel can both receive emergency data and also check call out data.
 
 KEY FEATURES
-•	Patient data can be viewed by searching using a patient’s NHS number.
-•	Emergency requests can be produced and viewed
-•	Hospitals can search for and assign an ambulance.
-•	Users can view which emergencies have been allocated to particular hospitals.
-•	Emergency and patient data can be sent to the simulated ambulance smart phone application.
-•	Emergency progress can be updated.
-•	Details, such as ambulance personnel, location and response to an emergency can be documented.
-•	Hospital processes can edit a patient’s medical data.
-•	Patient, emergency, ambulance and call out data can be stored in a database.
-•	Database transactions and row locking can be used to ensure that an ambulance is not assigned to more than one emergency at a time.
+Patient data can be viewed by searching using a patient’s NHS number.
+Emergency requests can be produced and viewed
+Hospitals can search for and assign an ambulance.
+Users can view which emergencies have been allocated to particular hospitals.
+Emergency and patient data can be sent to the simulated ambulance smart phone application.
+Emergency progress can be updated.
+Details, such as ambulance personnel, location and response to an emergency can be documented.
+Hospital processes can edit a patient’s medical data.
+Patient, emergency, ambulance and call out data can be stored in a database.
+Database transactions and row locking can be used to ensure that an ambulance is not assigned to more than one emergency at a time.
 
 APPLICATION DESIGN
 •	Packages have been formed to assist with the comprehension and ongoing maintenance of the application code
