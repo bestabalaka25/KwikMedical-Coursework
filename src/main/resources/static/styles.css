@@ -1,0 +1,330 @@
+
+:root {
+    --navy: #A71925;
+    --navy-light: #C62832;
+    --teal: #B51F2B;
+    --background: #F5F5F5;
+    --surface: #FFFFFF;
+    --text: #252525;
+    --muted: #737373;
+    --border: #E5E5E5;
+    --success: #16845B;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--background);
+    color: var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 650px;
+    min-height: 100vh;
+    margin: 0 auto;
+    background: var(--background);
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 20px;
+    background: var(--navy);
+    color: white;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-icon {
+    display: grid;
+    place-items: center;
+    width: 43px;
+    height: 43px;
+    border-radius: 12px;
+    background: #FFFFFF;
+    color: #A71925;
+    font-size: 23px;
+    font-weight: bold;
+}
+
+.brand h1 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.brand p {
+    margin: 4px 0 0;
+    color: #c5d3df;
+    font-size: 12px;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #d5e5e8;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #39d6a0;
+}
+
+.welcome-section {
+    padding: 30px 20px 22px;
+}
+
+.eyebrow {
+    margin: 0 0 10px;
+    color: var(--teal);
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1.3px;
+}
+
+.welcome-section h2 {
+    margin: 0;
+    color: var(--navy);
+    font-size: 27px;
+}
+
+.welcome-section > p:last-child {
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.dispatch-card {
+    margin: 0 16px 24px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background: var(--surface);
+    box-shadow: 0 4px 15px rgba(16, 36, 58, 0.04);
+}
+
+.dispatch-card h3 {
+    margin: 0;
+    color: var(--navy);
+    font-size: 18px;
+}
+
+.dispatch-card > p {
+    margin: 8px 0 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.dispatch-card label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.dispatch-card input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    outline: none;
+    font-size: 14px;
+}
+
+.dispatch-card input:focus {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(18, 168, 157, 0.12);
+}
+
+.dispatch-card button {
+    width: 100%;
+    margin-top: 14px;
+    padding: 15px;
+    border: none;
+    border-radius: 9px;
+    background: var(--teal);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.dispatch-card button:hover {
+    background: #0d9188;
+}
+
+#message {
+    margin: 12px 0 0;
+    font-size: 13px;
+}
+
+#dispatchDetails {
+    margin: 0 16px 24px;
+}
+
+#dispatchDetails[hidden] {
+    display: none;
+}
+
+footer {
+    padding: 25px 15px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+}
+
+@media (max-width: 380px) {
+    .app-header {
+        padding: 18px 14px;
+    }
+
+    .connection-status {
+        font-size: 10px;
+    }
+
+    .welcome-section h2 {
+        font-size: 23px;
+    }
+}
+
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-item span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.detail-item strong {
+    color: var(--navy);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+#loadDispatch:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.dispatch-card button {
+    background: #A71925;
+    color: white;
+}
+
+.dispatch-card button:hover {
+    background: #87131D;
+}
+.dispatch-card input:focus {
+    border-color: #A71925;
+    box-shadow: 0 0 0 3px rgba(167, 25, 37, 0.12);
+}
+
+.dispatch-card button:hover {
+    background: #87131D;
+}
+
+.dispatch-card button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+#calloutSection {
+    margin-top: 24px;
+}
+
+#calloutForm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#calloutForm label {
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+#calloutForm input,
+#calloutForm textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+#calloutForm textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+#calloutForm input:focus,
+#calloutForm textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+}
+
+#calloutMessage {
+    font-size: 14px;
+}
+#patientUpdateSection {
+    margin-top: 24px;
+}
+
+#patientUpdateForm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#patientUpdateForm label {
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+#patientUpdateForm textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+#patientUpdateForm textarea:focus {
+    outline: none;
+    border-color: var(--navy);
+}
+
+#patientUpdateMessage {
+    font-size: 14px;
+}

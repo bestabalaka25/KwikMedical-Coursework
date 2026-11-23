@@ -20,6 +20,7 @@ import uk.ac.napier.kwikmedical.hospital.CalloutRecordRequest
 import uk.ac.napier.kwikmedical.hospital.HospitalData
 import uk.ac.napier.kwikmedical.hospital.PatientRecordUpdateRequest
 import uk.ac.napier.kwikmedical.repository.DuplicateCalloutException
+import io.ktor.server.http.content.*
 @Serializable
 data class Patient(
     val nhsNumber: String,
@@ -44,10 +45,11 @@ fun Application.configureRouting() {
 
     routing {
 
+        staticResources("/app", "static")
+
         get("/") {
             call.respondText("Hello, World!")
         }
-
         get("/patients") {
             call.respond(patientRepository.findAll())
         }

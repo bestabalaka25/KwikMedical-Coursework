@@ -1,0 +1,147 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#A71925">
+    <title>KwikMedical | Ambulance App</title>
+    <link rel="stylesheet" href="/app/styles.css">
+</head>
+<body>
+
+<main class="app-container">
+    <header class="app-header">
+        <div class="brand">
+            <div class="brand-icon">K</div>
+            <div>
+                <h1>KwikMedical</h1>
+                <p>Ambulance Crew Portal</p>
+            </div>
+        </div>
+
+        <span class="connection-status">
+            <span class="status-dot"></span>
+            System Ready
+        </span>
+    </header>
+
+    <section class="welcome-section">
+        <p class="eyebrow">AMBULANCE MANAGEMENT SYSTEM</p>
+        <h2>Emergency Dashboard</h2>
+        <p>Access dispatch information and manage your assigned emergencies.</p>
+    </section>
+
+    <section class="dispatch-card">
+        <h3>Retrieve Emergency Dispatch</h3>
+        <p>Enter the emergency reference provided by the control centre.</p>
+
+        <label for="emergencyId">Emergency ID</label>
+        <input
+                type="text"
+                id="emergencyId"
+                placeholder="Enter emergency ID"
+        >
+
+        <button id="loadDispatch">Load Dispatch</button>
+
+        <p id="message" role="status"></p>
+    </section>
+
+    <section id="dispatchDetails" hidden>
+        <!-- Dispatch information will appear here -->
+    </section>
+
+    <section id="calloutSection" class="dispatch-card" hidden>
+        <h3>Submit Callout Report</h3>
+        <p>Complete the incident report once the emergency has been completed.</p>
+
+        <form id="calloutForm">
+
+            <label for="crewMembers">Crew Members</label>
+            <input
+                    type="text"
+                    id="crewMembers"
+                    placeholder="e.g. Crew A and Crew B"
+                    required
+            >
+
+            <label for="incidentDateTime">Incident Date and Time</label>
+            <input
+                    type="datetime-local"
+                    id="incidentDateTime"
+                    required
+            >
+
+            <label for="incidentLocation">Incident Location</label>
+            <input
+                    type="text"
+                    id="incidentLocation"
+                    placeholder="Enter incident location"
+                    required
+            >
+
+            <label for="actionsTaken">Actions Taken</label>
+            <textarea
+                    id="actionsTaken"
+                    placeholder="Describe the actions taken by the crew"
+                    required
+            ></textarea>
+
+            <label for="outcome">Outcome</label>
+            <textarea
+                    id="outcome"
+                    placeholder="Describe the outcome of the emergency"
+                    required
+            ></textarea>
+
+            <label for="durationMinutes">Duration (minutes)</label>
+            <input
+                    type="number"
+                    id="durationMinutes"
+                    min="1"
+                    placeholder="e.g. 35"
+                    required
+            >
+
+            <button type="submit" id="submitCallout">
+                Submit Callout Report
+            </button>
+
+            <p id="calloutMessage" role="status"></p>
+
+        </form>
+    </section>
+
+    <section id="patientUpdateSection" class="dispatch-card" hidden>
+        <h3>Update Patient Medical Record</h3>
+
+        <p>Update the patient's medical condition following treatment.</p>
+
+        <form id="patientUpdateForm">
+
+            <label for="medicalCondition">Updated Medical Condition</label>
+
+            <textarea
+                    id="medicalCondition"
+                    placeholder="Enter the updated medical condition"
+                    required
+            ></textarea>
+
+            <button type="submit" id="updatePatientButton">
+                Update Patient Record
+            </button>
+
+            <p id="patientUpdateMessage" role="status"></p>
+
+        </form>
+    </section>
+
+    <footer>
+        KwikMedical Ambulance Management System
+    </footer>
+</main>
+
+<script src="/app/app.js"></script>
+</body>
+</html>
