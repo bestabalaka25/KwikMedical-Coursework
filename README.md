@@ -17,6 +17,7 @@ KEY FEATURES
 10. Database transactions and row locking can be used to ensure that an ambulance is not assigned to more than one emergency at a time.
 
 APPLICATION DESIGN
+
 Packages have been formed to assist with the comprehension and ongoing maintenance of the application code.
 Ambulance – ambulance data and the simulated smart phone application.
 Database – database configuration and connection.
